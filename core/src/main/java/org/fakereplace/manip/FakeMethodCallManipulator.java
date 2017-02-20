@@ -241,12 +241,10 @@ public class FakeMethodCallManipulator implements ClassManipulator {
         final boolean staticMethod = data.getType() == FakeMethodCallData.Type.STATIC;
         Bytecode byteCode = new Bytecode(file.getConstPool());
 
-        // stick the method number in the const pool then load it onto the
-        // stack
-
+        // stick the method number in the const pool then load it onto the stack
         ManipulationUtils.pushParametersIntoArray(byteCode, data.getMethodDesc());
-        int scind = file.getConstPool().addIntegerInfo(data.getMethodNumber());
-        byteCode.addLdc(scind);
+        int methodNumberInd = file.getConstPool().addIntegerInfo(data.getMethodNumber());
+        byteCode.addLdc(methodNumberInd);
         byteCode.add(Opcode.SWAP);
         // invoke the added method
         if (staticMethod) {

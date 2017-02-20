@@ -217,51 +217,62 @@ public class MethodReplacementTransformer implements FakereplaceTransformer {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+
+        writeProxyClass(proxy, loader, proxyName);
+        return proxyName;
+    }
+
+    private static void writeProxyClass(ClassFile proxy, ClassLoader loader, String proxyName) {
         try {
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             DataOutputStream dos = new DataOutputStream(bytes);
             proxy.write(dos);
             ProxyDefinitionStore.saveProxyDefinition(loader, proxyName, bytes.toByteArray());
-            return proxyName;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
     }
 
     /**
      * Adds a method to a class
      */
-    private static Class<?> addMethod(ClassFile file, ClassLoader loader, MethodInfo mInfo, Set<FakeMethod> builder, CodeAttribute bytecode, boolean staticMethod, Class oldClass) {
+    private static Class<?> addMethod(ClassFile file, ClassLoader loader, MethodInfo mInfo, Set<FakeMethod> builder, CodeAttribute bytecode, boolean isStaticMethod, Class oldClass) {
         int methodCount = MethodIdentifierStore.instance().getMethodNumber(mInfo.getName(), mInfo.getDescriptor());
         try {
             if ((AccessFlag.ABSTRACT & mInfo.getAccessFlags()) == 0) {
                 // abstract methods don't get a body
-                generateBoxedConditionalCodeBlock(methodCount, mInfo, file.getConstPool(), bytecode, staticMethod, false);
+                generateBoxedConditionalCodeBlock(methodCount, mInfo, file.getConstPool(), bytecode, isStaticMethod, false);
             }
-            String proxyName = generateProxyInvocationBytecode(mInfo, methodCount, file.getName(), loader, staticMethod, file.isInterface());
+            String proxyName = generateProxyInvocationBytecode(mInfo, methodCount, file.getName(), loader, isStaticMethod, file.isInterface());
             ClassDataStore.instance().registerProxyName(oldClass, proxyName);
-            Transformer.getManipulator().addFakeMethodCallRewrite(new FakeMethodCallData(file.getName(), mInfo.getName(), mInfo.getDescriptor(), staticMethod ? FakeMethodCallData.Type.STATIC : file.isInterface() ? FakeMethodCallData.Type.INTERFACE : FakeMethodCallData.Type.VIRTUAL, loader, methodCount));
+            FakeMethodCallData fakeMethodCallData = new FakeMethodCallData(file.getName(), mInfo.getName(), mInfo.getDescriptor(),
+                    determineFakeMethodType(isStaticMethod, file), loader, methodCount);
+            Transformer.getManipulator().addFakeMethodCallRewrite(fakeMethodCallData);
 
             builder.add(new FakeMethod(mInfo.getName(), proxyName, mInfo.getDescriptor(), mInfo.getAccessFlags()));
-            if (!staticMethod) {
-                Class<?> sup = oldClass.getSuperclass();
-                while (sup != null && !sup.getName().equals(Object.class.getName())) {
-                    for (Method m : sup.getDeclaredMethods()) {
+            if (!isStaticMethod) {
+                Class<?> superClass = oldClass.getSuperclass();
+                while (superClass != null && !superClass.getName().equals(Object.class.getName())) {
+                    for (Method m : superClass.getDeclaredMethods()) {
                         if (m.getName().equals(mInfo.getName())) {
                             if (DescriptorUtils.getDescriptor(m).equals(mInfo.getDescriptor())) {
-                                Transformer.getManipulator().rewriteSubclassCalls(file.getName(), loader, sup.getName(), sup.getClassLoader(), mInfo.getName(), mInfo.getDescriptor());
-                                return sup;
+                                Transformer.getManipulator().rewriteSubclassCalls(file.getName(), loader, superClass.getName(), superClass.getClassLoader(), mInfo.getName(), mInfo.getDescriptor());
+                                return superClass;
                             }
                         }
                     }
-                    sup = sup.getSuperclass();
+                    superClass = superClass.getSuperclass();
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
+    }
+
+    private static FakeMethodCallData.Type determineFakeMethodType(boolean isStatic, ClassFile classFile) {
+        return isStatic ? FakeMethodCallData.Type.STATIC :
+                classFile.isInterface() ? FakeMethodCallData.Type.INTERFACE : FakeMethodCallData.Type.VIRTUAL;
     }
 
     /**
@@ -430,17 +441,8 @@ public class MethodReplacementTransformer implements FakereplaceTransformer {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-
-        try {
-            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-            DataOutputStream dos = new DataOutputStream(bytes);
-            proxy.write(dos);
-            ProxyDefinitionStore.saveProxyDefinition(loader, proxyName, bytes.toByteArray());
-            return proxyName;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
+        writeProxyClass(proxy, loader, proxyName);
+        return proxyName;
     }
 
     public static void copyMethodAttributes(MethodInfo oldMethod, MethodInfo newMethod) {

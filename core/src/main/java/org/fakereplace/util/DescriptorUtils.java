@@ -45,8 +45,8 @@ public class DescriptorUtils {
     public static int maxLocalsFromParameters(String methodDescriptor) {
         String[] params = descriptorStringToParameterArray(methodDescriptor);
         int ret = params.length;
-        for(String i : params) {
-            if(i.equals("J") || i.equals("D")) {
+        for (String i : params) {
+            if (i.equals("J") || i.equals("D")) {
                 ++ret;
             }
         }
@@ -57,7 +57,6 @@ public class DescriptorUtils {
      * returns an array of class types based on the method parameters this allows
      * getMethod to be called based on descriptor data We also pass the class
      * that the method We assume the descriptor is well formed
-     *
      */
     public static Class<?>[] argumentStringToClassArray(String methodDescriptor, Class<?> methodClass) throws ClassNotFoundException {
         int i = 1; // char 0 is a '('
@@ -127,12 +126,10 @@ public class DescriptorUtils {
     }
 
     /**
-     * returns an array of String representations of the parameter types.
-     * Primitives are returned as their native representations, while clases are
-     * returned in the form Ljava/lang/Integer
+     * returns an array of String representations of the parameter types. Primitives are returned as their native
+     * representations, while classes are returned in the form Ljava/lang/Integer
      * <p>
      * this is so the class I can be determined from an int for example
-     *
      */
     public static String[] descriptorStringToParameterArray(String methodDescriptor) {
         int i = 1; // char 0 is a '('
@@ -204,7 +201,6 @@ public class DescriptorUtils {
 
     /**
      * e.g. Ljava/lang/Object; to java/lang/Object
-     *
      */
     public static String getTypeStringFromDescriptorFormat(String descriptor) {
         descriptor = descriptor.substring(1);
